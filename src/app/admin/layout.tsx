@@ -38,11 +38,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!user || !['super_admin', 'platform_admin'].includes(user.platform_role ?? '')) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin-login'
+    }
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">🔒</div>
-          <p className="text-gray-400">{label('没有权限', 'No access', 'Tiada akses')}</p>
+          <p className="text-gray-400">{label('正在跳转...', 'Redirecting...', 'Mengalih...')}</p>
         </div>
       </div>
     )
