@@ -29,9 +29,11 @@ export async function updateSession(request: NextRequest) {
 
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = ['/orchard', '/wholesaler', '/retailer', '/consumer', '/admin']
+  const publicAdminPaths = ['/admin/login']
   const isProtectedPath = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
+  const isPublicAdminPath = publicAdminPaths.some(p => request.nextUrl.pathname === p)
 
-  if (isProtectedPath && !user) {
+  if (isProtectedPath && !isPublicAdminPath && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
