@@ -192,7 +192,7 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {method === 'phone' ? (
+              {method === 'phone' && (
                 <div>
                   <label className="label">{tr.phone}</label>
                   <div className="relative">
@@ -208,7 +208,9 @@ export default function LoginPage() {
                     />
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {method === 'email' && (
                 <div>
                   <label className="label">{label('电子邮箱', 'Email Address', 'Alamat Emel')}</label>
                   <div className="relative">
@@ -239,6 +241,7 @@ export default function LoginPage() {
                         type="email"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handlePasswordLogin()}
                         placeholder="email@example.com"
                         className="input pl-11"
                         autoFocus
