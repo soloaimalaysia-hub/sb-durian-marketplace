@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Package, ShoppingBag, DollarSign, AlertTriangle, Plus, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
+import DurianexWidget from '@/components/dashboard/DurianexWidget'
 
 interface Stats {
   totalProducts: number
@@ -106,8 +107,12 @@ export default function OrchardDashboard() {
         />
       </div>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* DURIANEX widget + Quick links */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-1">
+          <DurianexWidget />
+        </div>
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
         {[
           { href: '/orchard/products', icon: Package, zh: '管理产品', en: 'Manage Products', bm: 'Urus Produk', desc_zh: '上架/编辑/下架', desc_en: 'List, edit, remove', desc_bm: 'Senarai, edit, padam' },
           { href: '/orchard/orders', icon: ShoppingBag, zh: '订单管理', en: 'Orders', bm: 'Pesanan', desc_zh: '查看和确认订单', desc_en: 'View and confirm orders', desc_bm: 'Lihat dan sahkan pesanan' },
@@ -132,6 +137,7 @@ export default function OrchardDashboard() {
             </div>
           </Link>
         ))}
+        </div>
       </div>
     </div>
   )
