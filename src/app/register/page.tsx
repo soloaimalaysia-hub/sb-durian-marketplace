@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Phone, Shield, User, ArrowRight, ArrowLeft, Loader, Check } from 'lucide-react'
+import { Phone, Mail, Shield, User, ArrowRight, ArrowLeft, Loader, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
 import { t } from '@/lib/i18n/translations'
@@ -11,6 +11,7 @@ import { MALAYSIA_STATES, LANGUAGE_LABELS } from '@/lib/constants'
 import type { UserRole, Language } from '@/lib/types'
 
 type Step = 'language' | 'phone' | 'otp' | 'role' | 'profile' | 'pending'
+type Method = 'phone' | 'email'
 
 const ROLES: { id: UserRole; emoji: string; zh: string; en: string; bm: string; needsApproval: boolean }[] = [
   { id: 'orchard', emoji: '🌳', zh: '园主（果农）', en: 'Orchard Owner', bm: 'Pemilik Ladang', needsApproval: true },
@@ -28,7 +29,9 @@ function RegisterForm() {
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('language')
+  const [method, setMethod] = useState<Method>('phone')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [role, setRole] = useState<UserRole | null>(initialRole)
   const [form, setForm] = useState({
@@ -51,12 +54,18 @@ function RegisterForm() {
 
   async function handleSendOtp() {
     setError('')
-    if (!phone.trim()) return
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error: err } = await supabase.auth.signInWithOtp({ phone: formatPhone(phone) })
-      if (err) throw err
+      if (method === 'phone') {
+        if (!phone.trim()) return
+        const { error: err } = await supabase.auth.signInWithOtp({ phone: formatPhone(phone) })
+        if (err) throw err
+      } else {
+        if (!email.trim()) return
+        const { error: err } = await supabase.auth.signInWithOtp({ email: email.trim() })
+        if (err) throw err
+      }
       setStep('otp')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP')
@@ -71,20 +80,24 @@ function RegisterForm() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { data, error: err } = await supabase.auth.verifyOtp({
-        phone: formatPhone(phone),
-        token: otp,
-        type: 'sms',
-      })
+      let data, err
+      if (method === 'phone') {
+        const res = await supabase.auth.verifyOtp({ phone: formatPhone(phone), token: otp, type: 'sms' })
+        data = res.data; err = res.error
+      } else {
+        const res = await supabase.auth.verifyOtp({ email: email.trim(), token: otp, type: 'email' })
+        data = res.data; err = res.error
+      }
       if (err) throw err
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const realData = data ?? { user: authUser }
 
-      if (data.user) {
-        setAuthUserId(data.user.id)
-        // Check if already registered
+      if (realData?.user) {
+        setAuthUserId(realData.user.id)
         const { data: existing } = await supabase
           .from('sbm_users')
           .select('*')
-          .eq('auth_id', data.user.id)
+          .eq('auth_id', realData.user.id)
           .single()
 
         if (existing) {
@@ -122,9 +135,9 @@ function RegisterForm() {
         .insert({
           auth_id: authUserId,
           full_name: form.full_name.trim(),
-          email: form.email.trim() || null,
-          phone: formatPhone(phone),
-          whatsapp: form.whatsapp.trim() || formatPhone(phone),
+          email: form.email.trim() || (method === 'email' ? email.trim() : null),
+          phone: method === 'phone' ? formatPhone(phone) : (form.whatsapp.trim() || email.trim()),
+          whatsapp: form.whatsapp.trim() || (method === 'phone' ? formatPhone(phone) : email.trim()),
           role,
           language,
           status: isConsumer ? 'active' : 'pending',
@@ -174,28 +187,74 @@ function RegisterForm() {
     )
   }
 
-  // Step: Phone
+  // Step: Phone / Email
   if (step === 'phone') {
+    const label = (zh: string, en: string, bm: string) =>
+      language === 'zh' ? zh : language === 'en' ? en : bm
     return (
       <StepWrapper title={tr.registerTitle}>
         <div className="space-y-5">
-          <div>
-            <label className="label">{tr.phone}</label>
-            <div className="relative">
-              <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                placeholder="0123456789"
-                className="input pl-11"
-                autoFocus
-              />
-            </div>
+          {/* Method toggle */}
+          <div className="flex rounded-xl overflow-hidden border border-brand-dark-border">
+            <button
+              onClick={() => { setMethod('phone'); setError('') }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${method === 'phone' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
+            >
+              <Phone size={15} />
+              {label('手机号', 'Phone', 'Telefon')}
+            </button>
+            <button
+              onClick={() => { setMethod('email'); setError('') }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${method === 'email' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
+            >
+              <Mail size={15} />
+              {label('邮箱', 'Email', 'Emel')}
+            </button>
           </div>
+
+          {method === 'phone' ? (
+            <div>
+              <label className="label">{tr.phone}</label>
+              <div className="relative">
+                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
+                  placeholder="0123456789"
+                  className="input pl-11"
+                  autoFocus
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="label">{label('电子邮箱', 'Email Address', 'Alamat Emel')}</label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
+                  placeholder="email@example.com"
+                  className="input pl-11"
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {label('验证码将发送到邮箱', 'OTP will be sent to your email', 'OTP akan dihantar ke emel')}
+              </p>
+            </div>
+          )}
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button onClick={handleSendOtp} disabled={loading || !phone.trim()} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+          <button
+            onClick={handleSendOtp}
+            disabled={loading || (method === 'phone' ? !phone.trim() : !email.trim())}
+            className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+          >
             {loading ? <Loader size={18} className="animate-spin" /> : <ArrowRight size={18} />}
             {tr.sendOtp}
           </button>
@@ -209,12 +268,17 @@ function RegisterForm() {
 
   // Step: OTP
   if (step === 'otp') {
+    const lbl = (zh: string, en: string, bm: string) =>
+      language === 'zh' ? zh : language === 'en' ? en : bm
     return (
       <StepWrapper title={tr.otpSent}>
         <div className="space-y-5">
           <div className="text-center">
             <Shield size={40} className="text-brand-gold mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">{phone}</p>
+            <p className="text-gray-400 text-sm">{method === 'phone' ? phone : email}</p>
+            {method === 'email' && (
+              <p className="text-xs text-gray-500 mt-1">{lbl('请检查收件箱（包括垃圾邮件）', 'Check inbox (including spam)', 'Semak peti masuk (termasuk spam)')}</p>
+            )}
           </div>
           <div>
             <label className="label">{tr.otp}</label>
