@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Phone, Mail, Shield, ArrowRight, Loader } from 'lucide-react'
+import { Phone, Mail, Lock, Shield, ArrowRight, Loader } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
 import { t } from '@/lib/i18n/translations'
 
 type Step = 'input' | 'otp'
-type Method = 'phone' | 'email'
+type Method = 'phone' | 'email' | 'password'
 
 const ROLE_DASHBOARD: Record<string, string> = {
   orchard: '/orchard/dashboard',
@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [method, setMethod] = useState<Method>('phone')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -40,6 +41,41 @@ export default function LoginPage() {
     if (digits.startsWith('60')) return `+${digits}`
     if (digits.startsWith('0')) return `+6${digits}`
     return `+60${digits}`
+  }
+
+  async function handlePasswordLogin() {
+    setError('')
+    if (!email.trim() || !password.trim()) return
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { data, error: err } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (err) throw err
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('sbm_users')
+          .select('*')
+          .eq('auth_id', data.user.id)
+          .single()
+        if (profile) {
+          setUser(profile)
+          if (['super_admin', 'platform_admin'].includes(profile.platform_role ?? '')) {
+            router.push('/admin/dashboard')
+            return
+          }
+          router.push(ROLE_DASHBOARD[profile.role] || '/')
+        } else {
+          router.push('/register')
+        }
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleSendOtp() {
@@ -135,17 +171,24 @@ export default function LoginPage() {
               <div className="flex rounded-xl overflow-hidden border border-brand-dark-border">
                 <button
                   onClick={() => { setMethod('phone'); setError('') }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${method === 'phone' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors ${method === 'phone' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
                 >
-                  <Phone size={15} />
-                  {label('手机号', 'Phone', 'Telefon')}
+                  <Phone size={13} />
+                  {label('手机', 'Phone', 'Telefon')}
                 </button>
                 <button
                   onClick={() => { setMethod('email'); setError('') }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${method === 'email' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors ${method === 'email' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
                 >
-                  <Mail size={15} />
-                  {label('邮箱', 'Email', 'Emel')}
+                  <Mail size={13} />
+                  {label('邮箱OTP', 'Email OTP', 'OTP Emel')}
+                </button>
+                <button
+                  onClick={() => { setMethod('password'); setError('') }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors ${method === 'password' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Lock size={13} />
+                  {label('密码', 'Password', 'Kata Laluan')}
                 </button>
               </div>
 
@@ -186,8 +229,51 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {method === 'password' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="label">{label('电子邮箱', 'Email', 'Emel')}</label>
+                    <div className="relative">
+                      <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="email@example.com"
+                        className="input pl-11"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label">{label('密码', 'Password', 'Kata Laluan')}</label>
+                    <div className="relative">
+                      <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handlePasswordLogin()}
+                        placeholder="••••••••"
+                        className="input pl-11"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {error && <p className="text-red-400 text-sm">{error}</p>}
 
+              {method === 'password' ? (
+                <button
+                  onClick={handlePasswordLogin}
+                  disabled={loading || !email.trim() || !password.trim()}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? <Loader size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                  {label('登录', 'Login', 'Log Masuk')}
+                </button>
+              ) : (
               <button
                 onClick={handleSendOtp}
                 disabled={loading || (method === 'phone' ? !phone.trim() : !email.trim())}
@@ -196,6 +282,7 @@ export default function LoginPage() {
                 {loading ? <Loader size={18} className="animate-spin" /> : <ArrowRight size={18} />}
                 {tr.sendOtp}
               </button>
+              )}
             </div>
           ) : (
             <div className="space-y-5">
