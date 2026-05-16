@@ -217,21 +217,28 @@ export default function OrderModal({ product, buyer, onClose, onSuccess }: Order
             <div>
               <label className="label">{label('付款方式', 'Payment Method', 'Kaedah Pembayaran')}</label>
               <div className="space-y-2">
-                {[
-                  { id: 'bank_transfer', zh: '银行转账', en: 'Bank Transfer', bm: 'Pindahan Bank' },
-                  { id: 'stripe', zh: 'Stripe 在线付款', en: 'Stripe Online', bm: 'Stripe Dalam Talian' },
-                  ...(product.credit_terms_days > 0
-                    ? [{ id: 'credit_term', zh: `账期 ${product.credit_terms_days} 天`, en: `${product.credit_terms_days}-Day Credit`, bm: `Kredit ${product.credit_terms_days} Hari` }]
-                    : []),
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setPaymentMethod(m.id as 'stripe' | 'bank_transfer' | 'credit_term')}
-                    className={`w-full py-3 px-4 rounded-xl border text-sm font-medium text-left transition-colors ${paymentMethod === m.id ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-400'}`}
-                  >
-                    {language === 'zh' ? m.zh : language === 'en' ? m.en : m.bm}
-                  </button>
-                ))}
+                {/* Bank transfer */}
+                {(['bank_transfer', ...(product.credit_terms_days > 0 ? ['credit_term'] : [])] as const).map(id => {
+                  const labels = {
+                    bank_transfer: { zh: '银行转账', en: 'Bank Transfer', bm: 'Pindahan Bank' },
+                    credit_term:   { zh: `账期 ${product.credit_terms_days} 天`, en: `${product.credit_terms_days}-Day Credit`, bm: `Kredit ${product.credit_terms_days} Hari` },
+                  }
+                  const l = labels[id as keyof typeof labels]
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setPaymentMethod(id as 'bank_transfer' | 'credit_term')}
+                      className={`w-full py-3 px-4 rounded-xl border text-sm font-medium text-left transition-colors ${paymentMethod === id ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-400'}`}
+                    >
+                      {language === 'zh' ? l.zh : language === 'en' ? l.en : l.bm}
+                    </button>
+                  )
+                })}
+                {/* Stripe - coming soon */}
+                <div className="w-full py-3 px-4 rounded-xl border border-brand-dark-border text-sm text-left flex items-center justify-between opacity-50 cursor-not-allowed">
+                  <span className="text-gray-500">Stripe {label('在线付款', 'Online Payment', 'Bayaran Dalam Talian')}</span>
+                  <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">{label('即将推出', 'Coming Soon', 'Akan Datang')}</span>
+                </div>
               </div>
             </div>
 

@@ -1,6 +1,8 @@
 export type UserRole = 'orchard' | 'wholesaler' | 'retailer' | 'consumer' | 'admin'
 export type Language = 'zh' | 'en' | 'bm'
 export type UserStatus = 'pending' | 'active' | 'suspended'
+export type PlatformRole = 'super_admin' | 'platform_admin' | 'user'
+export type ProjectScope = 'all' | 'sb_durian' | 'saloon' | 'fnb' | 'livestream'
 
 export interface SbmUser {
   id: string
@@ -10,6 +12,8 @@ export interface SbmUser {
   phone: string
   whatsapp: string | null
   role: UserRole
+  platform_role?: PlatformRole
+  project_scope?: ProjectScope
   language: Language
   status: UserStatus
   verified_at: string | null
@@ -106,6 +110,29 @@ export interface SbmOrder {
   status: OrderStatus
   buyer_notes: string | null
   seller_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SbmPlatformSettings {
+  id: string
+  project: string
+  primary_color: string
+  secondary_color: string
+  logo_url: string | null
+  favicon_url: string | null
+  banner_url: string | null
+  site_name: string
+  hero_slogan_zh: string
+  hero_slogan_en: string
+  hero_slogan_bm: string
+  announcement_zh: string | null
+  announcement_en: string | null
+  announcement_bm: string | null
+  show_announcement: boolean
+  marketplace_enabled: boolean
+  registration_enabled: boolean
+  maintenance_mode: boolean
   created_at: string
   updated_at: string
 }
