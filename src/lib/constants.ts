@@ -10,11 +10,19 @@ export const DURIAN_VARIETIES = [
 ]
 
 export const DURIAN_GRADES = [
-  { code: 'premium', zh: 'Premium', en: 'Premium', bm: 'Premium' },
-  { code: 'A', zh: 'A 级', en: 'Grade A', bm: 'Gred A' },
-  { code: 'B', zh: 'B 级', en: 'Grade B', bm: 'Gred B' },
-  { code: 'C', zh: 'C 级', en: 'Grade C', bm: 'Gred C' },
-  { code: 'standard', zh: 'Standard', en: 'Standard', bm: 'Standard' },
+  { code: 'AA', zh: 'AA 级', en: 'AA', bm: 'AA' },
+  { code: 'A', zh: 'A 级', en: 'A', bm: 'A' },
+  { code: 'AB', zh: 'AB 级', en: 'AB', bm: 'AB' },
+  { code: 'B', zh: 'B 级', en: 'B', bm: 'B' },
+  { code: 'BB', zh: 'BB 级', en: 'BB', bm: 'BB' },
+  { code: 'BC', zh: 'BC 级', en: 'BC', bm: 'BC' },
+  { code: 'C', zh: 'C 级', en: 'C', bm: 'C' },
+  { code: 'CC', zh: 'CC 级', en: 'CC', bm: 'CC' },
+  { code: 'CCC', zh: 'CCC 级', en: 'CCC', bm: 'CCC' },
+  { code: 'CCCC', zh: 'CCCC 级', en: 'CCCC', bm: 'CCCC' },
+  { code: 'D', zh: 'D 级', en: 'D', bm: 'D' },
+  { code: 'zai', zh: '仔果', en: 'Zai', bm: 'Zai' },
+  { code: 'baby', zh: 'Baby 果', en: 'Baby', bm: 'Baby' },
   { code: 'mixed', zh: '混合', en: 'Mixed', bm: 'Campur' },
 ]
 
