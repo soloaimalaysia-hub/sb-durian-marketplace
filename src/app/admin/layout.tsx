@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Palette, ShoppingBag, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, Palette, ShoppingBag, Settings, LogOut, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/admin/users', icon: Users, zh: '用户管理', en: 'Users', bm: 'Pengguna' },
   { href: '/admin/appearance', icon: Palette, zh: '外观设置', en: 'Appearance', bm: 'Penampilan' },
   { href: '/admin/orders', icon: ShoppingBag, zh: '所有订单', en: 'All Orders', bm: 'Semua Pesanan' },
+  { href: '/admin/leads', icon: UserPlus, zh: '🌱 种子用户', en: '🌱 Leads', bm: '🌱 Leads' },
   { href: '/admin/settings', icon: Settings, zh: '系统设置', en: 'Settings', bm: 'Tetapan' },
 ]
 
