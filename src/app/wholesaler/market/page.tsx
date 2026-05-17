@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, SlidersHorizontal, MapPin, Star, ShoppingCart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
@@ -13,6 +14,7 @@ type ProductWithStore = SbmProduct & { sbm_stores: SbmStore }
 
 export default function WholesalerMarketPage() {
   const { language, user } = useAppStore()
+  const router = useRouter()
   const label = (zh: string, en: string, bm: string) =>
     language === 'zh' ? zh : language === 'en' ? en : bm
 
@@ -134,7 +136,10 @@ export default function WholesalerMarketPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setOrderProduct(p)}
+                  onClick={() => {
+                    if (!user) { router.push('/login'); return }
+                    setOrderProduct(p)
+                  }}
                   className="btn-primary flex items-center gap-2 flex-shrink-0 py-2 px-4 text-sm"
                 >
                   <ShoppingCart size={16} />
@@ -152,7 +157,7 @@ export default function WholesalerMarketPage() {
           product={orderProduct}
           buyer={user}
           onClose={() => setOrderProduct(null)}
-          onSuccess={() => { setOrderProduct(null) }}
+          onSuccess={() => setOrderProduct(null)}
         />
       )}
     </div>
