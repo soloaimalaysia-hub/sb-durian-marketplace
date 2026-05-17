@@ -1,143 +1,120 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Phone, Mail, Shield, User, ArrowRight, ArrowLeft, Loader, Check } from 'lucide-react'
+import { Mail, Lock, User, Phone, ArrowRight, ArrowLeft, Loader, Check, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
 import { t } from '@/lib/i18n/translations'
 import { MALAYSIA_STATES, LANGUAGE_LABELS } from '@/lib/constants'
 import type { UserRole, Language } from '@/lib/types'
 
-type Step = 'language' | 'phone' | 'otp' | 'role' | 'profile' | 'pending'
-type Method = 'phone' | 'email'
+type Step = 'language' | 'signup' | 'confirm' | 'role' | 'profile' | 'pending'
 
 const ROLES: { id: UserRole; emoji: string; zh: string; en: string; bm: string; needsApproval: boolean }[] = [
-  { id: 'orchard', emoji: '🌳', zh: '园主（果农）', en: 'Orchard Owner', bm: 'Pemilik Ladang', needsApproval: true },
-  { id: 'wholesaler', emoji: '⚖️', zh: '批发商', en: 'Wholesaler', bm: 'Pemborong', needsApproval: true },
-  { id: 'retailer', emoji: '🏪', zh: '零售商', en: 'Retailer', bm: 'Peruncit', needsApproval: true },
-  { id: 'consumer', emoji: '😋', zh: '消费者', en: 'Consumer', bm: 'Pengguna', needsApproval: false },
+  { id: 'orchard',    emoji: '🌳', zh: '园主（果农）', en: 'Orchard Owner', bm: 'Pemilik Ladang', needsApproval: true },
+  { id: 'wholesaler', emoji: '⚖️', zh: '批发商',       en: 'Wholesaler',    bm: 'Pemborong',     needsApproval: true },
+  { id: 'retailer',  emoji: '🏪', zh: '零售商',       en: 'Retailer',      bm: 'Peruncit',      needsApproval: true },
+  { id: 'consumer',  emoji: '😋', zh: '消费者',       en: 'Consumer',      bm: 'Pengguna',      needsApproval: false },
 ]
 
 function RegisterForm() {
   const searchParams = useSearchParams()
+  const emailVerified = searchParams.get('email_verified') === '1'
   const initialRole = searchParams.get('role') as UserRole | null
 
   const { language, setLanguage, setUser } = useAppStore()
   const tr = t[language]
   const router = useRouter()
 
-  const [step, setStep] = useState<Step>('language')
-  const [method, setMethod] = useState<Method>('phone')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [otp, setOtp] = useState('')
+  const [step, setStep] = useState<Step>(emailVerified ? 'role' : 'language')
   const [role, setRole] = useState<UserRole | null>(initialRole)
-  const [form, setForm] = useState({
-    full_name: '',
-    email: '',
-    whatsapp: '',
-    state: '',
-    store_name: '',
-  })
+  const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [signup, setSignup] = useState({ email: '', password: '', confirm: '', full_name: '', phone: '' })
+  const [profile, setProfile] = useState({ store_name: '', state: '' })
   const [authUserId, setAuthUserId] = useState<string | null>(null)
+  const [confirmedEmail, setConfirmedEmail] = useState('')
 
-  function formatPhone(raw: string) {
-    const digits = raw.replace(/\D/g, '')
-    if (digits.startsWith('60')) return `+${digits}`
-    if (digits.startsWith('0')) return `+6${digits}`
-    return `+60${digits}`
-  }
+  const label = useCallback((zh: string, en: string, bm: string) =>
+    language === 'zh' ? zh : language === 'en' ? en : bm, [language])
 
-  async function handleSendOtp() {
+  useEffect(() => {
+    if (!emailVerified) return
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      setAuthUserId(user.id)
+      const meta = user.user_metadata ?? {}
+      setSignup(s => ({ ...s, email: user.email ?? '', full_name: meta.full_name ?? '', phone: meta.phone ?? '' }))
+    })
+  }, [emailVerified])
+
+  const handleSignup = async () => {
     setError('')
-    setLoading(true)
-    try {
-      const supabase = createClient()
-      if (method === 'phone') {
-        if (!phone.trim()) return
-        const { error: err } = await supabase.auth.signInWithOtp({ phone: formatPhone(phone) })
-        if (err) throw err
-      } else {
-        if (!email.trim()) return
-        const { error: err } = await supabase.auth.signInWithOtp({ email: email.trim() })
-        if (err) throw err
-      }
-      setStep('otp')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send OTP')
-    } finally {
-      setLoading(false)
+    if (!signup.email.trim() || !signup.password || !signup.full_name.trim()) {
+      setError(label('请填写所有必填项', 'Please fill all required fields', 'Sila isi semua ruangan wajib'))
+      return
     }
-  }
-
-  async function handleVerifyOtp() {
-    setError('')
-    if (otp.length < 6) return
+    if (signup.password.length < 6) {
+      setError(label('密码至少 6 位', 'Password must be at least 6 characters', 'Kata laluan sekurang-kurangnya 6 aksara'))
+      return
+    }
+    if (signup.password !== signup.confirm) {
+      setError(label('两次密码不一致', 'Passwords do not match', 'Kata laluan tidak sepadan'))
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
-      let data, err
-      if (method === 'phone') {
-        const res = await supabase.auth.verifyOtp({ phone: formatPhone(phone), token: otp, type: 'sms' })
-        data = res.data; err = res.error
-      } else {
-        const res = await supabase.auth.verifyOtp({ email: email.trim(), token: otp, type: 'email' })
-        data = res.data; err = res.error
-      }
+      const { error: err } = await supabase.auth.signUp({
+        email: signup.email.trim(),
+        password: signup.password,
+        options: {
+          data: { full_name: signup.full_name.trim(), phone: signup.phone.trim() },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
       if (err) throw err
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      const realData = data ?? { user: authUser }
-
-      if (realData?.user) {
-        setAuthUserId(realData.user.id)
-        const { data: existing } = await supabase
-          .from('sbm_users')
-          .select('*')
-          .eq('auth_id', realData.user.id)
-          .single()
-
-        if (existing) {
-          setUser(existing)
-          const dashboards: Record<string, string> = {
-            orchard: '/orchard/dashboard',
-            wholesaler: '/wholesaler/dashboard',
-            retailer: '/retailer/dashboard',
-            consumer: '/consumer/dashboard',
-            admin: '/admin/dashboard',
-          }
-          router.push(dashboards[existing.role] || '/')
-          return
-        }
-      }
-      setStep(initialRole ? 'profile' : 'role')
+      setConfirmedEmail(signup.email.trim())
+      setStep('confirm')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Invalid OTP')
+      setError(err instanceof Error ? err.message : label('注册失败', 'Signup failed', 'Pendaftaran gagal'))
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleSubmit() {
+  const handleSubmit = async () => {
     setError('')
-    if (!form.full_name.trim() || !role) return
+    if (!signup.full_name.trim() || !role) {
+      setError(label('请填写姓名', 'Please enter your name', 'Sila masukkan nama'))
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
-      const isConsumer = role === 'consumer'
+      let uid = authUserId
+      if (!uid) {
+        const { data: { user } } = await supabase.auth.getUser()
+        uid = user?.id ?? null
+        if (uid) setAuthUserId(uid)
+      }
+      if (!uid) throw new Error(label('请先完成邮箱验证', 'Please verify your email first', 'Sila sahkan emel anda dahulu'))
 
-      // Insert sbm_users
+      const isConsumer = role === 'consumer'
+      const needsStore = ['orchard', 'wholesaler', 'retailer'].includes(role)
+
       const { data: newUser, error: userErr } = await supabase
         .from('sbm_users')
         .insert({
-          auth_id: authUserId,
-          full_name: form.full_name.trim(),
-          email: form.email.trim() || (method === 'email' ? email.trim() : null),
-          phone: method === 'phone' ? formatPhone(phone) : (form.whatsapp.trim() || email.trim()),
-          whatsapp: form.whatsapp.trim() || (method === 'phone' ? formatPhone(phone) : email.trim()),
+          auth_id: uid,
+          full_name: signup.full_name.trim(),
+          email: signup.email.trim() || null,
+          phone: signup.phone.trim() || signup.email.trim(),
+          whatsapp: signup.phone.trim() || null,
           role,
           language,
           status: isConsumer ? 'active' : 'pending',
@@ -148,294 +125,221 @@ function RegisterForm() {
 
       if (userErr) throw userErr
 
-      // Create store for B2B roles
-      if (['orchard', 'wholesaler', 'retailer'].includes(role) && form.store_name.trim()) {
+      if (needsStore && profile.store_name.trim()) {
         await supabase.from('sbm_stores').insert({
           user_id: newUser.id,
-          store_name: form.store_name.trim(),
-          state: form.state || null,
+          store_name: profile.store_name.trim(),
+          state: profile.state || null,
         })
       }
 
       setUser(newUser)
       setStep('pending')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setError(err instanceof Error ? err.message : label('注册失败', 'Registration failed', 'Pendaftaran gagal'))
     } finally {
       setLoading(false)
     }
   }
 
   const selectedRole = ROLES.find(r => r.id === role)
+  const needsStore = role && ['orchard', 'wholesaler', 'retailer'].includes(role)
 
-  // Step: Language
-  if (step === 'language') {
-    return (
-      <StepWrapper title={language === 'zh' ? '选择语言' : language === 'en' ? 'Select Language' : 'Pilih Bahasa'}>
-        <div className="space-y-3">
-          {(Object.entries(LANGUAGE_LABELS) as [Language, string][]).map(([code, label]) => (
-            <button
-              key={code}
-              onClick={() => { setLanguage(code); setStep('phone') }}
-              className={`w-full p-4 rounded-xl border text-left font-semibold transition-all ${language === code ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-300 hover:border-gray-500'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </StepWrapper>
-    )
-  }
-
-  // Step: Phone / Email
-  if (step === 'phone') {
-    const label = (zh: string, en: string, bm: string) =>
-      language === 'zh' ? zh : language === 'en' ? en : bm
-    return (
-      <StepWrapper title={tr.registerTitle}>
-        <div className="space-y-5">
-          {/* Method toggle */}
-          <div className="flex rounded-xl overflow-hidden border border-brand-dark-border">
-            <button
-              onClick={() => { setMethod('phone'); setError('') }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${method === 'phone' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
-            >
-              <Phone size={15} />
-              {label('手机号', 'Phone', 'Telefon')}
-            </button>
-            <button
-              onClick={() => { setMethod('email'); setError('') }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${method === 'email' ? 'bg-brand-gold/10 text-brand-gold' : 'text-gray-400 hover:text-white'}`}
-            >
-              <Mail size={15} />
-              {label('邮箱', 'Email', 'Emel')}
-            </button>
-          </div>
-
-          {method === 'phone' ? (
-            <div>
-              <label className="label">{tr.phone}</label>
-              <div className="relative">
-                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                  placeholder="0123456789"
-                  className="input pl-11"
-                  autoFocus
-                />
-              </div>
-            </div>
-          ) : (
-            <div>
-              <label className="label">{label('电子邮箱', 'Email Address', 'Alamat Emel')}</label>
-              <div className="relative">
-                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                  placeholder="email@example.com"
-                  className="input pl-11"
-                  autoFocus
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {label('验证码将发送到邮箱', 'OTP will be sent to your email', 'OTP akan dihantar ke emel')}
-              </p>
-            </div>
-          )}
-
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button
-            onClick={handleSendOtp}
-            disabled={loading || (method === 'phone' ? !phone.trim() : !email.trim())}
-            className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? <Loader size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-            {tr.sendOtp}
+  // ─── Language ──────────────────────────────────────────────────────
+  if (step === 'language') return (
+    <StepWrapper title={label('选择语言', 'Select Language', 'Pilih Bahasa')}>
+      <div className="space-y-3">
+        {(Object.entries(LANGUAGE_LABELS) as [Language, string][]).map(([code, lbl]) => (
+          <button key={code}
+            onClick={() => { setLanguage(code); setStep('signup') }}
+            className={`w-full p-4 rounded-xl border text-left font-semibold transition-all ${language === code ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-300 hover:border-gray-500'}`}>
+            {lbl}
           </button>
-          <div className="text-center">
-            <Link href="/login" className="text-sm text-gray-400 hover:text-white">{tr.login}</Link>
+        ))}
+      </div>
+    </StepWrapper>
+  )
+
+  // ─── Signup ────────────────────────────────────────────────────────
+  if (step === 'signup') return (
+    <StepWrapper title={tr.registerTitle}>
+      <div className="space-y-4">
+        <div>
+          <label className="label">{tr.fullName} *</label>
+          <div className="relative">
+            <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="text" value={signup.full_name}
+              onChange={e => setSignup(s => ({ ...s, full_name: e.target.value }))}
+              placeholder={label('你的姓名', 'Your full name', 'Nama penuh anda')}
+              className="input pl-10" autoFocus />
           </div>
         </div>
-      </StepWrapper>
-    )
-  }
+        <div>
+          <label className="label">
+            {tr.phone}
+            <span className="text-gray-500 ml-1 text-xs">{label('（选填）', '(optional)', '(pilihan)')}</span>
+          </label>
+          <div className="relative">
+            <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="tel" value={signup.phone}
+              onChange={e => setSignup(s => ({ ...s, phone: e.target.value }))}
+              placeholder="0123456789" className="input pl-10" />
+          </div>
+        </div>
+        <div>
+          <label className="label">{label('电子邮箱', 'Email', 'Emel')} *</label>
+          <div className="relative">
+            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="email" value={signup.email}
+              onChange={e => setSignup(s => ({ ...s, email: e.target.value }))}
+              placeholder="email@example.com" className="input pl-10" />
+          </div>
+        </div>
+        <div>
+          <label className="label">{label('密码', 'Password', 'Kata Laluan')} *</label>
+          <div className="relative">
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type={showPass ? 'text' : 'password'} value={signup.password}
+              onChange={e => setSignup(s => ({ ...s, password: e.target.value }))}
+              placeholder={label('至少 6 位', 'At least 6 characters', 'Sekurang-kurangnya 6 aksara')}
+              className="input pl-10 pr-10" />
+            <button type="button" onClick={() => setShowPass(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+              {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="label">{label('确认密码', 'Confirm Password', 'Sahkan Kata Laluan')} *</label>
+          <div className="relative">
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type={showPass ? 'text' : 'password'} value={signup.confirm}
+              onChange={e => setSignup(s => ({ ...s, confirm: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleSignup()}
+              placeholder={label('再输入一次密码', 'Enter password again', 'Masukkan semula kata laluan')}
+              className="input pl-10" />
+          </div>
+        </div>
+        {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
+        <button onClick={handleSignup} disabled={loading}
+          className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+          {loading ? <Loader size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+          {label('注册 · 发送验证邮件', 'Register · Send Verification Email', 'Daftar · Hantar Emel Pengesahan')}
+        </button>
+        <div className="text-center text-sm text-gray-400">
+          {label('已有账号？', 'Already have an account?', 'Sudah ada akaun?')}{' '}
+          <Link href="/login" className="text-brand-gold hover:underline">{tr.login}</Link>
+        </div>
+      </div>
+    </StepWrapper>
+  )
 
-  // Step: OTP
-  if (step === 'otp') {
-    const lbl = (zh: string, en: string, bm: string) =>
-      language === 'zh' ? zh : language === 'en' ? en : bm
-    return (
-      <StepWrapper title={tr.otpSent}>
-        <div className="space-y-5">
-          <div className="text-center">
-            <Shield size={40} className="text-brand-gold mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">{method === 'phone' ? phone : email}</p>
-            {method === 'email' && (
-              <p className="text-xs text-gray-500 mt-1">{lbl('请检查收件箱（包括垃圾邮件）', 'Check inbox (including spam)', 'Semak peti masuk (termasuk spam)')}</p>
+  // ─── Confirm Email ─────────────────────────────────────────────────
+  if (step === 'confirm') return (
+    <StepWrapper title="">
+      <div className="text-center space-y-5">
+        <div className="text-6xl">📧</div>
+        <div>
+          <h2 className="text-xl font-bold text-white mb-2">
+            {label('验证邮件已发送！', 'Verification Email Sent!', 'Emel Pengesahan Dihantar!')}
+          </h2>
+          <p className="text-gray-400 text-sm">
+            {label('请检查', 'Please check', 'Sila semak')}{' '}
+            <span className="text-brand-gold font-medium">{confirmedEmail}</span>
+          </p>
+          <p className="text-gray-500 text-sm mt-2">
+            {label('点击邮件中的确认链接即可继续', 'Click the confirmation link to continue', 'Klik pautan pengesahan untuk meneruskan')}
+          </p>
+          <p className="text-gray-600 text-xs mt-2">{label('（记得检查垃圾邮件箱）', '(Check spam folder too)', '(Semak folder spam juga)')}</p>
+        </div>
+        <button onClick={() => setStep('signup')}
+          className="btn-ghost flex items-center gap-2 mx-auto text-sm">
+          <ArrowLeft size={14} /> {label('重新注册', 'Back to Register', 'Kembali Pendaftaran')}
+        </button>
+      </div>
+    </StepWrapper>
+  )
+
+  // ─── Role ──────────────────────────────────────────────────────────
+  if (step === 'role') return (
+    <StepWrapper title={tr.selectRole}>
+      <div className="grid grid-cols-2 gap-3">
+        {ROLES.map(r => (
+          <button key={r.id}
+            onClick={() => { setRole(r.id); setStep('profile') }}
+            className="card hover:border-brand-gold/50 transition-all text-center p-5 flex flex-col items-center gap-2">
+            <span className="text-3xl">{r.emoji}</span>
+            <span className="font-semibold text-white text-sm">
+              {language === 'zh' ? r.zh : language === 'en' ? r.en : r.bm}
+            </span>
+            {r.needsApproval && (
+              <span className="text-xs text-gray-500">{label('需审核', 'Needs approval', 'Perlu kelulusan')}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </StepWrapper>
+  )
+
+  // ─── Profile ───────────────────────────────────────────────────────
+  if (step === 'profile') return (
+    <StepWrapper title={tr.registerTitle}>
+      <div className="space-y-4">
+        {selectedRole && (
+          <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: '#F59E0B10', border: '1px solid #F59E0B33' }}>
+            <span className="text-2xl">{selectedRole.emoji}</span>
+            <span className="text-brand-gold font-medium text-sm">
+              {language === 'zh' ? selectedRole.zh : language === 'en' ? selectedRole.en : selectedRole.bm}
+            </span>
+            {!initialRole && (
+              <button onClick={() => setStep('role')} className="ml-auto text-xs text-gray-400 hover:text-white flex items-center gap-1">
+                <ArrowLeft size={12} /> {tr.back}
+              </button>
             )}
           </div>
-          <div>
-            <label className="label">{tr.otp}</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={otp}
-              onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
-              placeholder="------"
-              className="input text-center text-2xl tracking-widest"
-              maxLength={6}
-              autoFocus
-            />
+        )}
+        <div>
+          <label className="label">{tr.fullName} *</label>
+          <div className="relative">
+            <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="text" value={signup.full_name}
+              onChange={e => setSignup(s => ({ ...s, full_name: e.target.value }))}
+              placeholder={label('你的姓名', 'Your full name', 'Nama penuh anda')}
+              className="input pl-10" autoFocus />
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
-            {loading && <Loader size={18} className="animate-spin" />}
-            {tr.verifyOtp}
-          </button>
-          <button onClick={() => { setStep('phone'); setOtp(''); setError('') }} className="w-full text-sm text-gray-400 hover:text-white">
-            {tr.back}
-          </button>
         </div>
-      </StepWrapper>
-    )
-  }
-
-  // Step: Role
-  if (step === 'role') {
-    return (
-      <StepWrapper title={tr.selectRole}>
-        <div className="grid grid-cols-2 gap-3">
-          {ROLES.map(r => (
-            <button
-              key={r.id}
-              onClick={() => { setRole(r.id); setStep('profile') }}
-              className="card hover:border-brand-gold/50 transition-all text-center p-5 flex flex-col items-center gap-2"
-            >
-              <span className="text-3xl">{r.emoji}</span>
-              <span className="font-semibold text-white text-sm">
-                {language === 'zh' ? r.zh : language === 'en' ? r.en : r.bm}
-              </span>
-            </button>
-          ))}
-        </div>
-      </StepWrapper>
-    )
-  }
-
-  // Step: Profile
-  if (step === 'profile') {
-    const needsStore = role && ['orchard', 'wholesaler', 'retailer'].includes(role)
-    return (
-      <StepWrapper title={tr.registerTitle}>
-        <div className="space-y-4">
-          {selectedRole && (
-            <div className="flex items-center gap-2 p-3 bg-brand-green/20 rounded-xl">
-              <span className="text-2xl">{selectedRole.emoji}</span>
-              <span className="text-brand-gold font-medium text-sm">
-                {language === 'zh' ? selectedRole.zh : language === 'en' ? selectedRole.en : selectedRole.bm}
-              </span>
-              {!initialRole && (
-                <button onClick={() => setStep('role')} className="ml-auto text-xs text-gray-400 hover:text-white flex items-center gap-1">
-                  <ArrowLeft size={12} /> {tr.back}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label className="label">{tr.fullName} *</label>
-            <div className="relative">
-              <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                value={form.full_name}
-                onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
-                placeholder={language === 'zh' ? '你的姓名' : language === 'en' ? 'Your full name' : 'Nama penuh anda'}
-                className="input pl-11"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          {needsStore && (
+        {needsStore && (
+          <>
             <div>
-              <label className="label">
-                {language === 'zh' ? '店面/园场名称 *' : language === 'en' ? 'Store/Farm Name *' : 'Nama Kedai/Ladang *'}
-              </label>
-              <input
-                type="text"
-                value={form.store_name}
-                onChange={e => setForm(f => ({ ...f, store_name: e.target.value }))}
-                placeholder={language === 'zh' ? '例：金山园主 / KL 榴莲批发' : 'e.g. Golden Hill Farm'}
-                className="input"
-              />
+              <label className="label">{label('店面/园场名称', 'Store/Farm Name', 'Nama Kedai/Ladang')} *</label>
+              <input type="text" value={profile.store_name}
+                onChange={e => setProfile(p => ({ ...p, store_name: e.target.value }))}
+                placeholder={label('例：金山榴莲园', 'e.g. Golden Hill Farm', 'cth. Ladang Bukit Emas')}
+                className="input" />
             </div>
-          )}
-
-          <div>
-            <label className="label">{tr.email}</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              placeholder="email@example.com"
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="label">{tr.whatsapp}</label>
-            <input
-              type="tel"
-              value={form.whatsapp}
-              onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))}
-              placeholder={phone}
-              className="input"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {language === 'zh' ? '留空则使用注册手机号' : language === 'en' ? 'Leave blank to use registration phone' : 'Kosongkan untuk guna nombor pendaftaran'}
-            </p>
-          </div>
-
-          {needsStore && (
             <div>
-              <label className="label">{tr.selectState}</label>
-              <select
-                value={form.state}
-                onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
-                className="input bg-brand-dark"
-              >
-                <option value="">{language === 'zh' ? '-- 选择州属 --' : language === 'en' ? '-- Select State --' : '-- Pilih Negeri --'}</option>
-                {MALAYSIA_STATES.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+              <label className="label">{label('所在州属', 'State', 'Negeri')}</label>
+              <select value={profile.state}
+                onChange={e => setProfile(p => ({ ...p, state: e.target.value }))}
+                className="input bg-brand-dark">
+                <option value="">{label('-- 选择州属 --', '-- Select State --', '-- Pilih Negeri --')}</option>
+                {MALAYSIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-          )}
+          </>
+        )}
+        {error && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>}
+        <button onClick={handleSubmit}
+          disabled={loading || !signup.full_name.trim() || (!!needsStore && !profile.store_name.trim())}
+          className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+          {loading ? <Loader size={18} className="animate-spin" /> : <Check size={18} />}
+          {tr.submit}
+        </button>
+      </div>
+    </StepWrapper>
+  )
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !form.full_name.trim() || (needsStore ? !form.store_name.trim() : false)}
-            className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? <Loader size={18} className="animate-spin" /> : <Check size={18} />}
-            {tr.submit}
-          </button>
-        </div>
-      </StepWrapper>
-    )
-  }
-
-  // Step: Pending
+  // ─── Pending ───────────────────────────────────────────────────────
   if (step === 'pending') {
     const isConsumer = role === 'consumer'
     return (
@@ -444,13 +348,11 @@ function RegisterForm() {
           <div className="text-6xl">{isConsumer ? '✅' : '⏳'}</div>
           <div>
             <h2 className="text-xl font-bold text-white mb-2">
-              {isConsumer
-                ? (language === 'zh' ? '注册成功！' : language === 'en' ? 'Welcome!' : 'Selamat datang!')
-                : tr.pending}
+              {isConsumer ? label('欢迎加入！', 'Welcome!', 'Selamat datang!') : tr.pending}
             </h2>
             <p className="text-gray-400 text-sm">
               {isConsumer
-                ? (language === 'zh' ? '欢迎加入 SB Durian！' : language === 'en' ? 'You are now part of SB Durian!' : 'Anda kini sebahagian dari SB Durian!')
+                ? label('你已成功注册 SB Durian！', 'You have joined SB Durian!', 'Anda telah menyertai SB Durian!')
                 : tr.pendingDesc}
             </p>
           </div>
@@ -460,7 +362,7 @@ function RegisterForm() {
             </Link>
           ) : (
             <Link href="/" className="btn-ghost inline-flex items-center gap-2">
-              {language === 'zh' ? '返回首页' : language === 'en' ? 'Back to Home' : 'Kembali ke Utama'}
+              {label('返回首页', 'Back to Home', 'Kembali ke Utama')}
             </Link>
           )}
         </div>
