@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Upload, Trash2, Loader, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/store/useAppStore'
-import { DURIAN_VARIETIES, DURIAN_GRADES } from '@/lib/constants'
+import { DURIAN_VARIETIES, DURIAN_GRADES, MALAYSIA_STATES } from '@/lib/constants'
 import { getDurianexRefPrice, getPriceComparison } from '@/lib/durianex'
 import type { SbmProduct } from '@/lib/types'
 
@@ -24,10 +24,12 @@ interface FormState {
   min_order_kg: string
   low_stock_alert_kg: string
   credit_terms_days: string
-  state: string
+  origin_state: string
   description_zh: string
   description_en: string
   description_bm: string
+  accepts_b2b: boolean
+  accepts_b2c: boolean
 }
 
 export default function ProductForm({ storeId, sellerRole, existing, onSuccess }: ProductFormProps) {
@@ -43,10 +45,12 @@ export default function ProductForm({ storeId, sellerRole, existing, onSuccess }
     min_order_kg: existing?.min_order_kg?.toString() ?? '',
     low_stock_alert_kg: existing?.low_stock_alert_kg?.toString() ?? '10',
     credit_terms_days: existing?.credit_terms_days?.toString() ?? '0',
-    state: '',
+    origin_state: existing?.origin_state ?? '',
     description_zh: existing?.description_zh ?? '',
     description_en: existing?.description_en ?? '',
     description_bm: existing?.description_bm ?? '',
+    accepts_b2b: existing?.accepts_b2b ?? true,
+    accepts_b2c: existing?.accepts_b2c ?? false,
   })
 
   const [images, setImages] = useState<string[]>((existing?.images as string[]) ?? [])
@@ -81,10 +85,10 @@ export default function ProductForm({ storeId, sellerRole, existing, onSuccess }
     }
   }
 
-  function setField(key: keyof FormState, value: string) {
+  function setField(key: keyof FormState, value: string | boolean) {
     setForm(f => ({ ...f, [key]: value }))
     if (key === 'price_per_kg') {
-      checkPriceWarning(parseFloat(value), refPrice)
+      checkPriceWarning(parseFloat(value as string), refPrice)
     }
   }
 
@@ -136,9 +140,12 @@ export default function ProductForm({ storeId, sellerRole, existing, onSuccess }
         min_order_kg: form.min_order_kg ? parseFloat(form.min_order_kg) : null,
         low_stock_alert_kg: parseFloat(form.low_stock_alert_kg || '10'),
         credit_terms_days: parseInt(form.credit_terms_days || '0'),
+        origin_state: form.origin_state || null,
         description_zh: form.description_zh || null,
         description_en: form.description_en || null,
         description_bm: form.description_bm || null,
+        accepts_b2b: form.accepts_b2b,
+        accepts_b2c: form.accepts_b2c,
         images,
         durianex_reference_price: refPrice,
         status: 'active',
@@ -245,6 +252,39 @@ export default function ProductForm({ storeId, sellerRole, existing, onSuccess }
           <label className="label">{label('起订量 (kg)', 'Min Order (kg)', 'Min Pesanan (kg)')}</label>
           <input type="number" min="0" step="1" value={form.min_order_kg} onChange={e => setField('min_order_kg', e.target.value)} className="input" placeholder={label('选填', 'Optional', 'Pilihan')} />
         </div>
+      </div>
+
+      {/* Origin State */}
+      <div>
+        <label className="label">{label('产地州属', 'Origin State', 'Negeri Asal')}</label>
+        <select value={form.origin_state} onChange={e => setField('origin_state', e.target.value)} className="input bg-brand-dark">
+          <option value="">{label('-- 选择州属 --', '-- Select State --', '-- Pilih Negeri --')}</option>
+          {MALAYSIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* B2B / B2C toggles */}
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          type="button"
+          onClick={() => setField('accepts_b2b', !form.accepts_b2b)}
+          className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors text-sm font-medium ${form.accepts_b2b ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-400'}`}
+        >
+          <span>{label('接受B2B批发', 'Accept B2B', 'Terima B2B')}</span>
+          <span className={`w-8 h-4 rounded-full transition-colors relative ${form.accepts_b2b ? 'bg-brand-gold' : 'bg-gray-600'}`}>
+            <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${form.accepts_b2b ? 'right-0.5' : 'left-0.5'}`} />
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setField('accepts_b2c', !form.accepts_b2c)}
+          className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors text-sm font-medium ${form.accepts_b2c ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-400'}`}
+        >
+          <span>{label('接受B2C零售', 'Accept B2C', 'Terima B2C')}</span>
+          <span className={`w-8 h-4 rounded-full transition-colors relative ${form.accepts_b2c ? 'bg-brand-gold' : 'bg-gray-600'}`}>
+            <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${form.accepts_b2c ? 'right-0.5' : 'left-0.5'}`} />
+          </span>
+        </button>
       </div>
 
       {/* Low stock alert + Credit terms */}

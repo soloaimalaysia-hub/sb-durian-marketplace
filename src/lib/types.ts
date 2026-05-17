@@ -67,6 +67,9 @@ export interface SbmProduct {
   status: 'active' | 'sold_out' | 'inactive'
   is_featured: boolean
   images: string[]
+  origin_state: string | null
+  accepts_b2b: boolean
+  accepts_b2c: boolean
   durianex_reference_price: number | null
   total_sold_kg: number
   view_count: number
