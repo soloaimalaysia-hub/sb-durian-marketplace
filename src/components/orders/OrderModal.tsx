@@ -22,7 +22,8 @@ export default function OrderModal({ product, buyer, onClose, onSuccess }: Order
   const label = (zh: string, en: string, bm: string) =>
     language === 'zh' ? zh : language === 'en' ? en : bm
 
-  const [qty, setQty] = useState(product.min_order_kg?.toString() ?? '10')
+  const minQty = product.min_order_kg ?? 10
+  const [qty, setQty] = useState(minQty.toString())
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'bank_transfer' | 'credit_term'>('bank_transfer')
@@ -35,11 +36,11 @@ export default function OrderModal({ product, buyer, onClose, onSuccess }: Order
   const variety = DURIAN_VARIETIES.find(v => v.code === product.variety)
   const varietyName = variety ? (language === 'zh' ? variety.zh : language === 'en' ? variety.en : variety.bm) : product.variety
   const qtyNum = parseFloat(qty) || 0
-  const subtotal = qtyNum * product.price_per_kg
+  const subtotal = qtyNum * (product.price_per_kg || 0)
   const platformFee = subtotal * PLATFORM_FEE_RATE
-  const deliveryFee = deliveryMethod === 'delivery' ? 0 : 0 // manual for now
+  const deliveryFee = 0 // manual for now
   const total = subtotal + deliveryFee
-  const minOk = !product.min_order_kg || qtyNum >= product.min_order_kg
+  const minOk = qtyNum >= minQty
   const stockOk = qtyNum <= product.stock_kg
 
   async function handleSubmit() {
@@ -176,11 +177,11 @@ export default function OrderModal({ product, buyer, onClose, onSuccess }: Order
               <label className="label">{label('数量 (kg)', 'Quantity (kg)', 'Kuantiti (kg)')} *</label>
               <input
                 type="number"
-                min={product.min_order_kg ?? 1}
+                min={minQty}
                 max={product.stock_kg}
                 step="1"
                 value={qty}
-                onChange={e => setQty(e.target.value)}
+                onChange={e => setQty(e.target.value || minQty.toString())}
                 className="input text-lg font-bold"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -199,17 +200,23 @@ export default function OrderModal({ product, buyer, onClose, onSuccess }: Order
                     onClick={() => setDeliveryMethod(m)}
                     className={`py-3 rounded-xl border text-sm font-medium transition-colors ${deliveryMethod === m ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-brand-dark-border text-gray-400'}`}
                   >
-                    {m === 'pickup' ? label('自取', 'Self Pick-up', 'Ambil Sendiri') : label('送货', 'Delivery', 'Penghantaran')}
+                    {m === 'pickup' ? label('🏠 自取', '🏠 Self Pick-up', '🏠 Ambil Sendiri') : label('🚚 送货上门', '🚚 Delivery', '🚚 Penghantaran')}
                   </button>
                 ))}
               </div>
               {deliveryMethod === 'delivery' && (
-                <textarea
-                  value={deliveryAddress}
-                  onChange={e => setDeliveryAddress(e.target.value)}
-                  placeholder={label('配送地址', 'Delivery address', 'Alamat penghantaran')}
-                  className="input mt-3 resize-none h-20"
-                />
+                <div className="mt-3 p-3 rounded-xl border-2 border-brand-gold/50 bg-brand-gold/5">
+                  <label className="text-xs font-bold text-brand-gold mb-2 flex items-center gap-1">
+                    📍 {label('配送地址（必填）', 'Delivery Address (Required)', 'Alamat Penghantaran (Wajib)')}
+                  </label>
+                  <textarea
+                    value={deliveryAddress}
+                    onChange={e => setDeliveryAddress(e.target.value)}
+                    placeholder={label('例：No. 123, Jalan ABC, Taman XYZ, 50000 Kuala Lumpur', 'E.g. No. 123, Jalan ABC, Taman XYZ, 50000 KL', 'Cth: No. 123, Jalan ABC, Taman XYZ, 50000 KL')}
+                    className="input resize-none h-24 text-sm"
+                    autoFocus
+                  />
+                </div>
               )}
             </div>
 
