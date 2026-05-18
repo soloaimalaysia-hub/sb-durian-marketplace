@@ -49,7 +49,13 @@ export default function HomePage() {
       <section className="relative px-4 pt-20 pb-24 text-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-sb-green/10 to-transparent pointer-events-none" />
         <div className="relative max-w-3xl mx-auto">
-          <div className="text-6xl mb-6">🍈</div>
+          <div className="flex justify-center mb-6">
+            <img
+              src="https://klrfpzxjsacriaqtfssf.supabase.co/storage/v1/object/public/sbm-assets/logo.jpeg"
+              alt="SB Durian Marketplace"
+              className="h-28 w-28 rounded-2xl object-contain drop-shadow-2xl"
+            />
+          </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-4 leading-tight" style={{ color: '#C7A617' }}>
             SB Durian
             <span style={{ color: '#F6F1E7' }}> Marketplace</span>

@@ -45,7 +45,11 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🍈</span>
+            <img
+              src="https://klrfpzxjsacriaqtfssf.supabase.co/storage/v1/object/public/sbm-assets/logo.jpeg"
+              alt="SB Durian Marketplace"
+              className="h-10 w-10 rounded-lg object-contain"
+            />
             <div className="leading-tight">
               <p className="font-bold text-sm" style={{ color: '#C7A617' }}>SB Durian</p>
               <p className="text-xs font-semibold" style={{ color: '#5E7F1F' }}>Marketplace</p>
