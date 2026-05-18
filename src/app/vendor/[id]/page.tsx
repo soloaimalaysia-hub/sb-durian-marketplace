@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { MapPin, Clock, Calendar, Star, MessageCircle, ArrowLeft, Crown } from 'lucide-react'
+import { MapPin, Clock, Calendar, Star, MessageCircle, ArrowLeft, Crown, ShoppingBag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Vendor {
@@ -22,18 +22,76 @@ interface Vendor {
   rank: number
 }
 
+interface Product {
+  id: string
+  name: string
+  description: string | null
+  price: number | null
+  unit: string
+  image_url: string | null
+  is_available: boolean
+}
+
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map(i => (
-        <Star
-          key={i}
-          size={14}
+        <Star key={i} size={14}
           fill={i <= Math.round(rating) ? '#C7A617' : 'none'}
-          stroke={i <= Math.round(rating) ? '#C7A617' : 'rgba(199,166,23,0.4)'}
-        />
+          stroke={i <= Math.round(rating) ? '#C7A617' : 'rgba(199,166,23,0.4)'} />
       ))}
       <span className="text-sm font-bold ml-1" style={{ color: '#C7A617' }}>{rating.toFixed(1)}</span>
+    </div>
+  )
+}
+
+function ProductCard({ product, waLink }: { product: Product; waLink: string }) {
+  return (
+    <div className="rounded-2xl overflow-hidden"
+      style={{ background: 'rgba(26,45,34,0.8)', border: `1px solid ${product.is_available ? 'rgba(199,166,23,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+      {/* Image */}
+      <div className="relative h-36 w-full overflow-hidden">
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #1a2d20, #2d4a1e)' }}>
+            <span className="text-4xl opacity-20">🍈</span>
+          </div>
+        )}
+        {!product.is_available && (
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.55)' }}>
+            <span className="text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: 'rgba(179,58,46,0.85)', color: '#F6F1E7' }}>SOLD OUT</span>
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <h3 className="font-bold text-sm leading-tight mb-0.5" style={{ color: '#F6F1E7' }}>{product.name}</h3>
+        {product.description && (
+          <p className="text-xs mb-2 line-clamp-2" style={{ color: 'rgba(246,241,231,0.5)' }}>{product.description}</p>
+        )}
+        <div className="flex items-center justify-between">
+          {product.price != null ? (
+            <div>
+              <span className="text-base font-black" style={{ color: '#C7A617' }}>RM {product.price.toFixed(2)}</span>
+              <span className="text-xs ml-1" style={{ color: 'rgba(246,241,231,0.4)' }}>{product.unit}</span>
+            </div>
+          ) : (
+            <span className="text-xs" style={{ color: 'rgba(246,241,231,0.35)' }}>Price on request</span>
+          )}
+          {product.is_available && (
+            <a href={waLink} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all"
+              style={{ background: '#25D366', color: '#fff' }}>
+              <MessageCircle size={11} /> Order
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -41,17 +99,18 @@ function StarRating({ rating }: { rating: number }) {
 export default function VendorPage() {
   const { id } = useParams<{ id: string }>()
   const [vendor, setVendor] = useState<Vendor | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('sbm_featured_vendors')
-        .select('*')
-        .eq('id', id)
-        .single()
-      setVendor(data)
+      const [{ data: v }, { data: p }] = await Promise.all([
+        supabase.from('sbm_featured_vendors').select('*').eq('id', id).single(),
+        supabase.from('sbm_vendor_products').select('*').eq('vendor_id', id).order('sort_order').order('created_at'),
+      ])
+      setVendor(v)
+      setProducts(p || [])
       setLoading(false)
     }
     load()
@@ -80,13 +139,15 @@ export default function VendorPage() {
     ? `https://wa.me/${vendor.whatsapp.replace(/\D/g, '')}`
     : `https://wa.me/601234567890`
 
+  const availableProducts = products.filter(p => p.is_available)
+  const soldOutProducts = products.filter(p => !p.is_available)
+
   return (
     <div className="min-h-screen pb-16">
       {/* Cover Image */}
       <div className="relative h-52 sm:h-72 w-full overflow-hidden">
         {vendor.cover_image_url ? (
-          <img src={vendor.cover_image_url} alt={vendor.shop_name}
-            className="w-full h-full object-cover" />
+          <img src={vendor.cover_image_url} alt={vendor.shop_name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #1a2d20 0%, #3a5a28 100%)' }}>
@@ -100,9 +161,7 @@ export default function VendorPage() {
         </Link>
         {vendor.is_open && (
           <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full text-xs font-bold"
-            style={{ background: 'rgba(94,127,31,0.9)', color: '#F6F1E7' }}>
-            OPEN
-          </div>
+            style={{ background: 'rgba(94,127,31,0.9)', color: '#F6F1E7' }}>OPEN</div>
         )}
       </div>
 
@@ -110,11 +169,10 @@ export default function VendorPage() {
         {/* Logo + Info Card */}
         <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(20,38,28,0.95)', border: '1px solid rgba(199,166,23,0.3)' }}>
           <div className="flex items-start gap-4">
-            {/* Logo */}
             <div className="flex-shrink-0">
               {vendor.logo_url ? (
-                <img src={vendor.logo_url} alt="logo"
-                  className="w-16 h-16 rounded-xl object-cover" style={{ border: '2px solid rgba(199,166,23,0.5)' }} />
+                <img src={vendor.logo_url} alt="logo" className="w-16 h-16 rounded-xl object-cover"
+                  style={{ border: '2px solid rgba(199,166,23,0.5)' }} />
               ) : (
                 <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-black"
                   style={{ background: 'linear-gradient(135deg, #5E7F1F, #3a5a1a)', color: '#C7A617', border: '2px solid rgba(199,166,23,0.4)' }}>
@@ -122,11 +180,8 @@ export default function VendorPage() {
                 </div>
               )}
             </div>
-            {/* Name + Rating */}
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-black leading-tight mb-1" style={{ color: '#C7A617' }}>
-                {vendor.shop_name}
-              </h1>
+              <h1 className="text-xl font-black leading-tight mb-1" style={{ color: '#C7A617' }}>{vendor.shop_name}</h1>
               <StarRating rating={vendor.rating} />
               <div className="flex items-center gap-1.5 mt-2">
                 <MapPin size={13} style={{ color: 'rgba(246,241,231,0.5)' }} />
@@ -135,7 +190,6 @@ export default function VendorPage() {
             </div>
           </div>
 
-          {/* Hours + Days */}
           <div className="flex gap-4 mt-4 pt-4" style={{ borderTop: '1px solid rgba(199,166,23,0.15)' }}>
             <div className="flex items-center gap-1.5">
               <Clock size={13} style={{ color: '#C7A617' }} />
@@ -147,7 +201,6 @@ export default function VendorPage() {
             </div>
           </div>
 
-          {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-3">
             {(vendor.tags || []).map(tag => (
               <span key={tag} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium"
@@ -157,7 +210,6 @@ export default function VendorPage() {
             ))}
           </div>
 
-          {/* Description */}
           {vendor.description && (
             <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(246,241,231,0.65)' }}>
               {vendor.description}
@@ -165,13 +217,44 @@ export default function VendorPage() {
           )}
         </div>
 
-        {/* Products placeholder */}
+        {/* ── Products Section ── */}
         <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(20,38,28,0.95)', border: '1px solid rgba(199,166,23,0.2)' }}>
-          <h2 className="text-base font-bold mb-3" style={{ color: '#C7A617' }}>🍈 Products</h2>
-          <div className="text-center py-8">
-            <p className="text-sm" style={{ color: 'rgba(246,241,231,0.4)' }}>Products coming soon...</p>
-            <p className="text-xs mt-1" style={{ color: 'rgba(246,241,231,0.25)' }}>Owner is updating the store</p>
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag size={16} style={{ color: '#C7A617' }} />
+            <h2 className="text-base font-bold" style={{ color: '#C7A617' }}>Products</h2>
+            {products.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: 'rgba(199,166,23,0.15)', color: '#C7A617' }}>
+                {availableProducts.length} available
+              </span>
+            )}
           </div>
+
+          {products.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-3xl mb-3 opacity-30">🍈</p>
+              <p className="text-sm" style={{ color: 'rgba(246,241,231,0.35)' }}>Products coming soon...</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(246,241,231,0.2)' }}>Owner is updating the store</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                {availableProducts.map(p => (
+                  <ProductCard key={p.id} product={p} waLink={waLink} />
+                ))}
+              </div>
+              {soldOutProducts.length > 0 && (
+                <>
+                  <p className="text-xs mt-4 mb-2 font-semibold" style={{ color: 'rgba(246,241,231,0.3)' }}>SOLD OUT</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {soldOutProducts.map(p => (
+                      <ProductCard key={p.id} product={p} waLink={waLink} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
 
         {/* WhatsApp CTA */}

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Save, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Star, Upload, ImageIcon } from 'lucide-react'
+import { Save, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Star, Upload, ImageIcon, ShoppingBag } from 'lucide-react'
+import Link from 'next/link'
 
 interface Vendor {
   id: string
@@ -312,6 +313,11 @@ export default function AdminVendorsPage() {
                   </span>
                 </button>
               </div>
+              <Link href={`/admin/vendors/${v.id}/products`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                style={{ background: 'rgba(199,166,23,0.12)', color: '#C7A617', border: '1px solid rgba(199,166,23,0.3)' }}>
+                <ShoppingBag size={13} /> Products
+              </Link>
               <button onClick={() => saveVendor(v)} disabled={saving === v.id}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all"
                 style={{ background: saved === v.id ? 'rgba(94,127,31,0.3)' : '#5E7F1F', color: '#F6F1E7' }}>
