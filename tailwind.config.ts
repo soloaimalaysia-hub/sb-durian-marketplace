@@ -9,15 +9,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // SB Durian Marketplace brand colors
+        // SB Durian — new brand palette
+        'sb-green':      '#5E7F1F',
+        'sb-dark':       '#243b2f',
+        'sb-gold':       '#C7A617',
+        'sb-cream':      '#F6F1E7',
+        'sb-champagne':  '#D4AF37',
+        'sb-ivory':      '#EFE5D2',
+        'sb-red':        '#B33A2E',
+        // brand-* aliases → remapped to new palette (backward compat)
         brand: {
-          green: '#1B4332',
-          'green-light': '#2D6A4F',
-          gold: '#F59E0B',
-          'gold-light': '#FCD34D',
-          dark: '#0D1117',
-          'dark-card': '#161B22',
-          'dark-border': '#30363D',
+          green:         '#5E7F1F',
+          'green-light': '#4a6518',
+          gold:          '#C7A617',
+          'gold-light':  '#D4AF37',
+          dark:          '#243b2f',
+          'dark-card':   '#1a2d20',
+          'dark-border': '#3a4a30',
         },
         background: "var(--background)",
         foreground: "var(--foreground)",

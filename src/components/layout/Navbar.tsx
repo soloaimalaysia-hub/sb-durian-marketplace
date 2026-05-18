@@ -40,24 +40,28 @@ export default function Navbar() {
   const dashboardUrl = user ? ROLE_DASHBOARD[user.role] : null
 
   return (
-    <nav className="sticky top-0 z-50 bg-brand-dark border-b border-brand-dark-border">
+    <nav className="sticky top-0 z-50 border-b" style={{ background: 'rgba(26,45,34,0.95)', backdropFilter: 'blur(10px)', borderColor: 'rgba(199,166,23,0.2)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <span className="text-2xl">🍈</span>
             <div className="leading-tight">
-              <p className="text-white font-bold text-sm">SB Durian</p>
-              <p className="text-brand-gold text-xs">Marketplace</p>
+              <p className="font-bold text-sm" style={{ color: '#C7A617' }}>SB Durian</p>
+              <p className="text-xs font-semibold" style={{ color: '#5E7F1F' }}>Marketplace</p>
             </div>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/marketplace" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link href="/marketplace" className="text-sm transition-colors" style={{ color: 'rgba(246,241,231,0.8)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#C7A617')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(246,241,231,0.8)')}>
               {tr.marketplace}
             </Link>
-            <Link href="/retailers" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link href="/retailers" className="text-sm transition-colors" style={{ color: 'rgba(246,241,231,0.8)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#C7A617')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(246,241,231,0.8)')}>
               {tr.retailers}
             </Link>
 
@@ -71,12 +75,13 @@ export default function Navbar() {
                 {LANG_OPTIONS.find(l => l.code === language)?.label}
               </button>
               {langOpen && (
-                <div className="absolute right-0 top-8 bg-brand-dark-card border border-brand-dark-border rounded-xl shadow-xl py-1 min-w-[120px]">
+                <div className="absolute right-0 top-8 rounded-xl shadow-xl py-1 min-w-[120px]" style={{ background: 'rgba(26,45,34,0.97)', border: '1px solid rgba(199,166,23,0.2)' }}>
                   {LANG_OPTIONS.map(l => (
                     <button
                       key={l.code}
                       onClick={() => { setLanguage(l.code); setLangOpen(false) }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-brand-dark transition-colors ${language === l.code ? 'text-brand-gold' : 'text-gray-300'}`}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${language === l.code ? '' : ''}`}
+                      style={{ color: language === l.code ? '#C7A617' : 'rgba(246,241,231,0.7)' }}
                     >
                       {l.label}
                     </button>
@@ -125,12 +130,12 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-brand-dark-border bg-brand-dark-card">
+        <div className="md:hidden border-t" style={{ background: 'rgba(20,38,28,0.97)', borderColor: 'rgba(199,166,23,0.2)' }}>
           <div className="px-4 py-4 space-y-3">
-            <Link href="/marketplace" className="block text-gray-300 py-2 text-base" onClick={() => setMenuOpen(false)}>
+            <Link href="/marketplace" className="block py-2 text-base" style={{ color: 'rgba(246,241,231,0.8)' }} onClick={() => setMenuOpen(false)}>
               {tr.marketplace}
             </Link>
-            <Link href="/retailers" className="block text-gray-300 py-2 text-base" onClick={() => setMenuOpen(false)}>
+            <Link href="/retailers" className="block py-2 text-base" style={{ color: 'rgba(246,241,231,0.8)' }} onClick={() => setMenuOpen(false)}>
               {tr.retailers}
             </Link>
 
@@ -140,7 +145,10 @@ export default function Navbar() {
                 <button
                   key={l.code}
                   onClick={() => { setLanguage(l.code); setMenuOpen(false) }}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${language === l.code ? 'border-brand-gold text-brand-gold' : 'border-brand-dark-border text-gray-400'}`}
+                  className="px-3 py-1 rounded-full text-sm border transition-colors"
+                  style={language === l.code
+                    ? { borderColor: '#C7A617', color: '#C7A617' }
+                    : { borderColor: 'rgba(199,166,23,0.3)', color: 'rgba(246,241,231,0.5)' }}
                 >
                   {l.label}
                 </button>

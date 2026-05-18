@@ -2,56 +2,189 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── CSS Variables ─────────────────────────────────────── */
 :root {
-  --background: #0D1117;
-  --foreground: #FFFFFF;
+  --background:   #243b2f;
+  --foreground:   #F6F1E7;
+  --sb-green:     #5E7F1F;
+  --sb-dark:      #243b2f;
+  --sb-gold:      #C7A617;
+  --sb-cream:     #F6F1E7;
+  --sb-champagne: #D4AF37;
+  --sb-ivory:     #EFE5D2;
+  --sb-red:       #B33A2E;
 }
 
+/* ─── Reset ──────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
 
+/* ─── Body — durian texture background ───────────────────── */
 body {
-  background-color: #0D1117;
-  color: #FFFFFF;
+  background-color: #243b2f;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='70'%3E%3Cellipse cx='30' cy='35' rx='12' ry='18' fill='none' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='30' y1='17' x2='30' y2='5' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='30' y1='53' x2='30' y2='65' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='18' y1='26' x2='8' y2='20' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='42' y1='26' x2='52' y2='20' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 60px 70px;
+  background-repeat: repeat;
+  color: #F6F1E7;
   font-family: 'Inter', 'Noto Sans SC', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Typography ─────────────────────────────────────────── */
+h1, h2 {
+  color: #C7A617;
+}
+
+h3, h4 {
+  color: #F6F1E7;
+}
+
+/* ─── Durian texture helper class ───────────────────────── */
+.durian-bg {
+  background-color: #243b2f;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='70'%3E%3Cellipse cx='30' cy='35' rx='12' ry='18' fill='none' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='30' y1='17' x2='30' y2='5' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='30' y1='53' x2='30' y2='65' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='18' y1='26' x2='8' y2='20' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3Cline x1='42' y1='26' x2='52' y2='20' stroke='rgba(94,127,31,0.07)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 60px 70px;
+  background-repeat: repeat;
+}
+
+/* ─── Component Styles ───────────────────────────────────── */
 @layer components {
+
+  /* ── Buttons ── */
+
+  /* Primary — olive green */
   .btn-primary {
-    @apply bg-brand-gold text-brand-dark font-bold py-3 px-6 rounded-xl hover:bg-brand-gold-light transition-colors duration-200 text-base;
+    @apply inline-flex items-center justify-center font-semibold rounded-[10px] px-5 py-2.5 transition-all duration-200 text-base;
+    background-color: #5E7F1F;
+    color: #F6F1E7;
+    border: none;
+  }
+  .btn-primary:hover {
+    background-color: #4a6518;
   }
 
+  /* Gold — outlined */
+  .btn-gold {
+    @apply inline-flex items-center justify-center font-semibold rounded-[10px] px-5 py-2.5 transition-all duration-200 text-base;
+    background: transparent;
+    border: 1.5px solid #C7A617;
+    color: #C7A617;
+  }
+  .btn-gold:hover {
+    background: rgba(199, 166, 23, 0.15);
+  }
+
+  /* Secondary — same as gold for backward compat */
   .btn-secondary {
-    @apply bg-brand-green text-white font-semibold py-3 px-6 rounded-xl hover:bg-brand-green-light transition-colors duration-200 text-base;
+    @apply inline-flex items-center justify-center font-semibold rounded-[10px] px-5 py-2.5 transition-all duration-200 text-base;
+    background: transparent;
+    border: 1.5px solid #C7A617;
+    color: #C7A617;
+  }
+  .btn-secondary:hover {
+    background: rgba(199, 166, 23, 0.15);
   }
 
+  /* Ghost — subtle cream border */
   .btn-ghost {
-    @apply border border-brand-dark-border text-gray-300 font-semibold py-3 px-6 rounded-xl hover:bg-brand-dark-card transition-colors duration-200 text-base;
+    @apply inline-flex items-center justify-center font-semibold rounded-[10px] px-5 py-2.5 transition-all duration-200 text-base;
+    background: transparent;
+    border: 1.5px solid rgba(199, 166, 23, 0.35);
+    color: #F6F1E7;
+  }
+  .btn-ghost:hover {
+    border-color: #C7A617;
+    color: #C7A617;
   }
 
+  /* Danger — red */
+  .btn-danger {
+    @apply inline-flex items-center justify-center font-semibold rounded-[10px] px-5 py-2.5 transition-all duration-200 text-base;
+    background-color: #B33A2E;
+    color: #fff;
+    border: none;
+  }
+  .btn-danger:hover {
+    background-color: #9a2f24;
+  }
+
+  /* ── Cards ── */
   .card {
-    @apply bg-brand-dark-card border border-brand-dark-border rounded-2xl p-6;
+    @apply rounded-xl p-4 transition-all duration-200;
+    background: rgba(94, 127, 31, 0.12);
+    border: 1px solid rgba(199, 166, 23, 0.25);
+    border-radius: 12px;
+  }
+  .card:hover {
+    border-color: rgba(199, 166, 23, 0.6);
+    box-shadow: 0 0 12px rgba(199, 166, 23, 0.15);
   }
 
+  /* ── Form elements ── */
   .input {
-    @apply w-full bg-brand-dark border border-brand-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors text-base;
+    @apply w-full rounded-xl px-4 py-3 text-base transition-colors;
+    background: rgba(94, 127, 31, 0.1);
+    border: 1px solid rgba(199, 166, 23, 0.25);
+    color: #F6F1E7;
+  }
+  .input::placeholder {
+    color: rgba(246, 241, 231, 0.35);
+  }
+  .input:focus {
+    outline: none;
+    border-color: #C7A617;
+    box-shadow: 0 0 0 2px rgba(199, 166, 23, 0.1);
   }
 
   .label {
-    @apply block text-sm text-gray-400 mb-2;
+    @apply block text-sm mb-2;
+    color: rgba(246, 241, 231, 0.5);
   }
 
+  /* ── Badges ── */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 
+  /* Pending — gold */
+  .badge-pending {
+    background: rgba(199, 166, 23, 0.15);
+    color: #C7A617;
+    border: 1px solid rgba(199, 166, 23, 0.3);
+  }
+
+  /* Active / Confirmed — green */
+  .badge-active,
+  .badge-confirmed {
+    background: rgba(94, 127, 31, 0.2);
+    color: #8bc34a;
+    border: 1px solid rgba(94, 127, 31, 0.4);
+  }
+
+  /* Cancelled / Rejected — red */
+  .badge-cancelled,
+  .badge-rejected {
+    background: rgba(179, 58, 46, 0.15);
+    color: #e05a4a;
+    border: 1px solid rgba(179, 58, 46, 0.3);
+  }
+
+  /* Completed — bright green */
+  .badge-completed {
+    background: rgba(94, 127, 31, 0.25);
+    color: #a3d65c;
+    border: 1px solid rgba(94, 127, 31, 0.5);
+  }
+
+  /* ── Stats ── */
   .stat-number {
-    @apply text-3xl font-bold text-white;
+    @apply text-3xl font-bold;
+    color: #F6F1E7;
   }
 
   .stat-label {
-    @apply text-sm text-gray-400 mt-1;
+    @apply text-sm mt-1;
+    color: rgba(246, 241, 231, 0.5);
   }
 }

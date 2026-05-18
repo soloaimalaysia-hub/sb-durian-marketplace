@@ -44,17 +44,17 @@ export default function HomePage() {
   const tr = t[language]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen durian-bg">
       {/* Hero */}
       <section className="relative px-4 pt-20 pb-24 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-green/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-sb-green/10 to-transparent pointer-events-none" />
         <div className="relative max-w-3xl mx-auto">
           <div className="text-6xl mb-6">🍈</div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4 leading-tight" style={{ color: '#C7A617' }}>
             SB Durian
-            <span className="text-brand-gold"> Marketplace</span>
+            <span style={{ color: '#F6F1E7' }}> Marketplace</span>
           </h1>
-          <p className="text-xl text-gray-400 mb-8">{tr.slogan}</p>
+          <p className="text-xl mb-8" style={{ color: 'rgba(246,241,231,0.65)' }}>{tr.slogan}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register" className="btn-primary flex items-center justify-center gap-2">
               {tr.register} <ArrowRight size={18} />
@@ -74,11 +74,11 @@ export default function HomePage() {
             const content = f[language]
             return (
               <div key={i} className="card flex flex-col gap-3">
-                <div className="w-10 h-10 bg-brand-green/30 rounded-xl flex items-center justify-center">
-                  <Icon size={20} className="text-brand-gold" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(94,127,31,0.25)' }}>
+                  <Icon size={20} style={{ color: '#C7A617' }} />
                 </div>
-                <h3 className="font-bold text-white">{content.title}</h3>
-                <p className="text-sm text-gray-400">{content.desc}</p>
+                <h3 className="font-bold" style={{ color: '#F6F1E7' }}>{content.title}</h3>
+                <p className="text-sm" style={{ color: 'rgba(246,241,231,0.6)' }}>{content.desc}</p>
               </div>
             )
           })}
@@ -86,12 +86,12 @@ export default function HomePage() {
       </section>
 
       {/* Role selection CTA */}
-      <section className="px-4 py-16 bg-brand-dark-card border-y border-brand-dark-border">
+      <section className="px-4 py-16 border-y" style={{ background: 'rgba(20,38,28,0.6)', borderColor: 'rgba(199,166,23,0.15)' }}>
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center text-white mb-2">
+          <h2 className="text-2xl font-bold text-center mb-2" style={{ color: '#C7A617' }}>
             {language === 'zh' ? '你是谁？' : language === 'en' ? 'Who are you?' : 'Siapa anda?'}
           </h2>
-          <p className="text-center text-gray-400 mb-10 text-sm">
+          <p className="text-center mb-10 text-sm" style={{ color: 'rgba(246,241,231,0.55)' }}>
             {language === 'zh' ? '选择你的身份，开始使用专属功能' : language === 'en' ? 'Select your role to access tailored features' : 'Pilih peranan anda untuk ciri yang disesuaikan'}
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -102,10 +102,10 @@ export default function HomePage() {
                 className="card hover:border-brand-gold/50 hover:bg-brand-dark transition-all duration-200 text-center group cursor-pointer"
               >
                 <div className="text-4xl mb-3">{r.emoji}</div>
-                <h3 className="font-bold text-white text-sm group-hover:text-brand-gold transition-colors">
+                <h3 className="font-bold text-sm transition-colors" style={{ color: '#F6F1E7' }}>
                   {language === 'zh' ? r.zh : language === 'en' ? r.en : r.bm}
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs mt-1" style={{ color: 'rgba(246,241,231,0.45)' }}>
                   {language === 'zh' ? r.desc_zh : language === 'en' ? r.desc_en : r.desc_bm}
                 </p>
               </Link>
@@ -116,7 +116,7 @@ export default function HomePage() {
 
       {/* DURIANEX link */}
       <section className="px-4 py-12 text-center">
-        <p className="text-gray-500 text-sm">
+        <p className="text-sm" style={{ color: 'rgba(246,241,231,0.4)' }}>
           {language === 'zh' ? '价格数据由 ' : language === 'en' ? 'Price data powered by ' : 'Data harga dikuasakan oleh '}
           <a
             href="https://durianex-web.vercel.app"

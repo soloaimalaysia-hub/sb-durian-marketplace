@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh">
-      <body className="bg-brand-dark text-white min-h-screen">
+      <body className="min-h-screen" style={{ color: '#F6F1E7' }}>
         <Navbar />
         <main>{children}</main>
       </body>
