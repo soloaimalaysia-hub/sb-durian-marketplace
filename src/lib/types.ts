@@ -19,6 +19,10 @@ export interface SbmUser {
   verified_at: string | null
   created_at: string
   updated_at: string
+  avatar_url?: string | null
+  sb_coins?: number
+  wallet_balance?: number
+  voucher_count?: number
 }
 
 export interface SbmStore {
