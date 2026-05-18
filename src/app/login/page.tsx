@@ -231,8 +231,14 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-4">🍈</div>
-          <h1 className="text-2xl font-bold text-white">{tr.loginTitle}</h1>
+          <div className="flex justify-center mb-4">
+            <img
+              src="https://klrfpzxjsacriaqtfssf.supabase.co/storage/v1/object/public/sbm-assets/logo.jpeg"
+              alt="SB Durian"
+              className="h-20 w-20 rounded-xl object-contain drop-shadow-xl"
+            />
+          </div>
+          <h1 className="text-2xl font-bold" style={{ color: '#C7A617' }}>{tr.loginTitle}</h1>
         </div>
         <div className="card">{children}</div>
       </div>
