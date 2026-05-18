@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Save, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Star } from 'lucide-react'
+import { Save, ToggleLeft, ToggleRight, ArrowUp, ArrowDown, Star, Upload, ImageIcon } from 'lucide-react'
 
 interface Vendor {
   id: string
@@ -21,15 +21,109 @@ interface Vendor {
   is_active: boolean
 }
 
+// ── Image Upload Button ─────────────────────────────────────────────────
+function ImageUpload({
+  label,
+  currentUrl,
+  storagePath,
+  onUploaded,
+  aspect = 'cover',
+}: {
+  label: string
+  currentUrl: string | null
+  storagePath: string
+  onUploaded: (url: string) => void
+  aspect?: 'cover' | 'logo'
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError('')
+    setUploading(true)
+    try {
+      const supabase = createClient()
+      // Always overwrite same path so no duplicate files pile up
+      const { error: uploadErr } = await supabase.storage
+        .from('sbm-assets')
+        .upload(storagePath, file, { upsert: true, contentType: file.type })
+      if (uploadErr) throw uploadErr
+
+      const { data } = supabase.storage.from('sbm-assets').getPublicUrl(storagePath)
+      // Bust cache so the new image shows immediately
+      onUploaded(data.publicUrl + '?t=' + Date.now())
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      // Reset input so same file can be re-selected if needed
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const isLogo = aspect === 'logo'
+
+  return (
+    <div>
+      <label className="label text-xs">{label}</label>
+      <div className="flex items-start gap-3">
+        {/* Preview */}
+        {currentUrl ? (
+          <img
+            src={currentUrl}
+            alt="preview"
+            className={isLogo ? 'w-16 h-16 rounded-xl object-cover flex-shrink-0' : 'w-24 h-16 rounded-xl object-cover flex-shrink-0'}
+            style={{ border: '1.5px solid rgba(199,166,23,0.4)' }}
+          />
+        ) : (
+          <div
+            className={`flex items-center justify-center rounded-xl flex-shrink-0 ${isLogo ? 'w-16 h-16' : 'w-24 h-16'}`}
+            style={{ background: 'rgba(94,127,31,0.1)', border: '1.5px dashed rgba(199,166,23,0.3)' }}
+          >
+            <ImageIcon size={18} style={{ color: 'rgba(199,166,23,0.4)' }} />
+          </div>
+        )}
+
+        {/* Upload button */}
+        <div className="flex flex-col gap-1.5">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+            style={{ background: 'rgba(94,127,31,0.2)', color: '#8bc34a', border: '1px solid rgba(94,127,31,0.4)' }}
+          >
+            <Upload size={13} />
+            {uploading ? 'Uploading...' : 'Upload Photo'}
+          </button>
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          {currentUrl && (
+            <p className="text-xs" style={{ color: 'rgba(246,241,231,0.3)' }}>✓ Photo saved</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Page ───────────────────────────────────────────────────────────
 export default function AdminVendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadVendors()
-  }, [])
+  useEffect(() => { loadVendors() }, [])
 
   async function loadVendors() {
     const supabase = createClient()
@@ -93,7 +187,7 @@ export default function AdminVendorsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-black" style={{ color: '#C7A617' }}>🍈 Vendor Management</h1>
         <p className="text-sm mt-1" style={{ color: 'rgba(246,241,231,0.5)' }}>
-          Edit store info, upload images, toggle open status & adjust ranking
+          Upload photos, edit store info, toggle open status & adjust ranking
         </p>
       </div>
 
@@ -101,6 +195,7 @@ export default function AdminVendorsPage() {
         {vendors.map((v, idx) => (
           <div key={v.id} className="rounded-2xl p-5"
             style={{ background: 'rgba(20,38,28,0.95)', border: '1px solid rgba(199,166,23,0.25)' }}>
+
             {/* Header row */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -163,16 +258,29 @@ export default function AdminVendorsPage() {
                 <input className="input text-sm" placeholder="+601234567890" value={v.whatsapp || ''}
                   onChange={e => updateLocal(v.id, 'whatsapp', e.target.value)} />
               </div>
+
+              {/* ── Cover Photo Upload ── */}
               <div className="sm:col-span-2">
-                <label className="label text-xs">Cover Image URL</label>
-                <input className="input text-sm" placeholder="https://..." value={v.cover_image_url || ''}
-                  onChange={e => updateLocal(v.id, 'cover_image_url', e.target.value)} />
+                <ImageUpload
+                  label="Cover Photo"
+                  currentUrl={v.cover_image_url}
+                  storagePath={`vendors/${v.id}/cover.jpg`}
+                  aspect="cover"
+                  onUploaded={url => updateLocal(v.id, 'cover_image_url', url)}
+                />
               </div>
+
+              {/* ── Logo Upload ── */}
               <div className="sm:col-span-2">
-                <label className="label text-xs">Logo URL</label>
-                <input className="input text-sm" placeholder="https://..." value={v.logo_url || ''}
-                  onChange={e => updateLocal(v.id, 'logo_url', e.target.value)} />
+                <ImageUpload
+                  label="Logo / Profile Photo"
+                  currentUrl={v.logo_url}
+                  storagePath={`vendors/${v.id}/logo.jpg`}
+                  aspect="logo"
+                  onUploaded={url => updateLocal(v.id, 'logo_url', url)}
+                />
               </div>
+
               <div className="sm:col-span-2">
                 <label className="label text-xs">Description</label>
                 <textarea className="input text-sm resize-none" rows={2}
