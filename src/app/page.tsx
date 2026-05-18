@@ -1,9 +1,113 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, TrendingUp, ShoppingCart, Users, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, TrendingUp, ShoppingCart, Users, Zap, MapPin, Clock, Star, Crown } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { t } from '@/lib/i18n/translations'
+import { createClient } from '@/lib/supabase/client'
+
+interface FeaturedVendor {
+  id: string
+  shop_name: string
+  location: string
+  rating: number
+  cover_image_url: string | null
+  logo_url: string | null
+  tags: string[]
+  open_hours: string
+  open_days: string
+  is_open: boolean
+}
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1,2,3,4,5].map(i => (
+        <Star key={i} size={12}
+          fill={i <= Math.round(rating) ? '#C7A617' : 'none'}
+          stroke={i <= Math.round(rating) ? '#C7A617' : 'rgba(199,166,23,0.35)'} />
+      ))}
+      <span className="text-xs font-bold ml-1" style={{ color: '#C7A617' }}>{rating.toFixed(1)}</span>
+    </div>
+  )
+}
+
+function VendorCard({ v }: { v: FeaturedVendor }) {
+  const initials = v.shop_name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
+  return (
+    <Link href={`/vendor/${v.id}`}
+      className="block rounded-2xl overflow-hidden transition-all duration-250 hover:scale-[1.01]"
+      style={{ background: 'rgba(246,241,231,0.06)', border: '1px solid rgba(199,166,23,0.25)' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(199,166,23,0.6)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(199,166,23,0.12)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(199,166,23,0.25)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}>
+
+      {/* Cover image */}
+      <div className="relative h-40 w-full overflow-hidden">
+        {v.cover_image_url ? (
+          <img src={v.cover_image_url} alt={v.shop_name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #1a2d20 0%, #3a5a28 100%)' }}>
+            <span className="text-6xl opacity-20">🍈</span>
+          </div>
+        )}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(20,38,28,0.85) 0%, transparent 55%)' }} />
+        {v.is_open && (
+          <span className="absolute top-3 right-3 text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(94,127,31,0.9)', color: '#F6F1E7' }}>OPEN</span>
+        )}
+      </div>
+
+      {/* Card body */}
+      <div className="p-4">
+        <div className="flex items-start gap-3 mb-3">
+          {/* Logo */}
+          {v.logo_url ? (
+            <img src={v.logo_url} alt="logo" className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+              style={{ border: '1.5px solid rgba(199,166,23,0.4)' }} />
+          ) : (
+            <div className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-black"
+              style={{ background: 'linear-gradient(135deg,#5E7F1F,#3a5a1a)', color: '#C7A617', border: '1.5px solid rgba(199,166,23,0.4)' }}>
+              {initials}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-black text-sm leading-tight mb-1 truncate" style={{ color: '#C7A617' }}>{v.shop_name}</h3>
+            <StarRating rating={v.rating} />
+            <div className="flex items-center gap-1 mt-1">
+              <MapPin size={11} style={{ color: 'rgba(246,241,231,0.45)' }} />
+              <span className="text-xs truncate" style={{ color: 'rgba(246,241,231,0.5)' }}>{v.location}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Hours + Tags row */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <Clock size={11} style={{ color: 'rgba(246,241,231,0.4)' }} />
+          <span className="text-xs" style={{ color: 'rgba(246,241,231,0.45)' }}>{v.open_hours}</span>
+          <span className="text-xs" style={{ color: 'rgba(246,241,231,0.3)' }}>·</span>
+          <span className="text-xs" style={{ color: 'rgba(246,241,231,0.45)' }}>{v.open_days}</span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1.5 flex-wrap">
+            {(v.tags || []).slice(0,3).map(tag => (
+              <span key={tag} className="flex items-center gap-0.5 text-xs px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(199,166,23,0.1)', color: '#C7A617', border: '1px solid rgba(199,166,23,0.2)' }}>
+                <Crown size={8}/> {tag}
+              </span>
+            ))}
+          </div>
+          <span className="text-xs font-semibold flex items-center gap-0.5"
+            style={{ color: '#C7A617' }}>
+            View Store <ArrowRight size={11}/>
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
+}
 
 const FEATURES = [
   {
@@ -42,6 +146,18 @@ const ROLES = [
 export default function HomePage() {
   const { language } = useAppStore()
   const tr = t[language]
+  const [vendors, setVendors] = useState<FeaturedVendor[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('sbm_featured_vendors')
+      .select('*')
+      .eq('is_active', true)
+      .order('rank', { ascending: true })
+      .limit(10)
+      .then(({ data }) => setVendors(data || []))
+  }, [])
 
   return (
     <div className="min-h-screen durian-bg">
@@ -119,6 +235,29 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Top 10 Featured Vendors ── */}
+      {vendors.length > 0 && (
+        <section className="px-4 py-12 max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-black" style={{ color: '#C7A617' }}>
+                🏆 Top 10 Durian Stores
+              </h2>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(246,241,231,0.45)' }}>
+                {language === 'zh' ? '精选榴莲商家' : language === 'en' ? 'Handpicked premium vendors' : 'Peniaga durian terpilih'}
+              </p>
+            </div>
+            <Link href="/marketplace" className="text-xs font-semibold flex items-center gap-1"
+              style={{ color: '#C7A617' }}>
+              {language === 'zh' ? '全部' : 'See all'} <ArrowRight size={12} />
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {vendors.map(v => <VendorCard key={v.id} v={v} />)}
+          </div>
+        </section>
+      )}
 
       {/* DURIANEX link */}
       <section className="px-4 py-12 text-center">
